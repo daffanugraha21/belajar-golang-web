@@ -1,48 +1,31 @@
 package controllers
 
 import (
+	"go-api/services"
 	"net/http"
 	"strconv"
+
 	"github.com/gin-gonic/gin"
 )
 
-type User struct {
-	ID int `json:"id"`
-	Name string `json:"name"`
-}
-
-var users = []User{
-	{ID: 1, Name: "Alice"},
-	{ID: 2, Name: "Bob"},
-}
-
 //Get /users
 func GetUsers(c *gin.Context){
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, services.GetAllUsers())
 }
 
 // Get /users/:id
 func GetUserByID(c *gin.Context){
-	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message" : "invalid id",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
 		return
 	}
-
-	for _, user := range users {
-		if user.ID == id {
-			c.JSON(http.StatusOK, user)
-			return
-		}
+	user, found := services.GetUserByID(id)
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"message":"user not found"})
+		return
 	}
-
-	c.JSON(http.StatusNotFound, gin.H{
-		"message" : "user not found",
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 func CreateUser(c *gin.Context) {
@@ -57,13 +40,8 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	newUser := User{
-		ID:   len(users) + 1,
-		Name: body.Name,
-	}
-
-	users = append(users, newUser)
-	c.JSON(http.StatusCreated, newUser)
+	user := services.CreateUser(body.Name)
+	c.JSON(http.StatusCreated, user)
 }
 
 func UpdateUser(c *gin.Context){
@@ -87,33 +65,28 @@ func UpdateUser(c *gin.Context){
 		return
 	}
 
-	for i, user := range users {
-		if user.ID == id {
-			users[i].Name = body.Name
-			c.JSON(http.StatusOK, users[i])
-			return
-		}
+	user, updated := services.UpdateUser(id, body.Name)
+	if !updated {
+		c.JSON(http.StatusNotFound, gin.H{"message" : "user not found"})
+		return
 	}
 
-	c.JSON(http.StatusNotFound, gin.H{
-		"message" : "user not found",
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 // delete /users/:id
 func DeleteUser(c *gin.Context){
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("id"))
 
-	for i, user := range users {
-		if user.ID == id {
-			users = append(users[:i], users[i+1:]...)
-			c.JSON(http.StatusOK, gin.H{
-				"message" : "user deleted",
-			})
-			return
-		}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
+		return
 	}
-	c.JSON(http.StatusNotFound, gin.H{
-		"message" : "user not found",
-	})
+
+	if !services.DeleteUser(id) {
+		c.JSON(http.StatusNotFound, gin.H{"message": "user not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
 }
