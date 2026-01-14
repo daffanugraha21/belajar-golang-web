@@ -1,31 +1,31 @@
 package controllers
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"go-api/services"
-	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 )
 
-//Get /users
-func GetUsers(c *gin.Context){
-	c.JSON(http.StatusOK, services.GetAllUsers())
+func GetUsers(c *gin.Context) {
+	users, err := services.GetAllUsers()
+	if err != nil {
+		c.JSON(500, gin.H{"message": "failed to fetch users"})
+		return
+	}
+	c.JSON(200, users)
 }
 
-// Get /users/:id
-func GetUserByID(c *gin.Context){
-	id, err := strconv.Atoi(c.Param("id"))
+func GetUserByID(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	user, err := services.GetUserByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
+		c.JSON(404, gin.H{"message": "user not found"})
 		return
 	}
-	user, found := services.GetUserByID(id)
-	if !found {
-		c.JSON(http.StatusNotFound, gin.H{"message":"user not found"})
-		return
-	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(200, user)
 }
 
 func CreateUser(c *gin.Context) {
@@ -34,59 +34,15 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid request",
-		})
+		c.JSON(400, gin.H{"message": "invalid request"})
 		return
 	}
 
-	user := services.CreateUser(body.Name)
-	c.JSON(http.StatusCreated, user)
-}
-
-func UpdateUser(c *gin.Context){
-	id, err := strconv.Atoi(c.Param("id"))
-
+	user, err := services.CreateUser(body.Name)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid id",
-		})
+		c.JSON(500, gin.H{"message": "failed to create user"})
 		return
 	}
 
-	var body struct {
-		Name string `json:"name"`
-	}
-
-	if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid request",
-		})
-		return
-	}
-
-	user, updated := services.UpdateUser(id, body.Name)
-	if !updated {
-		c.JSON(http.StatusNotFound, gin.H{"message" : "user not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, user)
-}
-
-// delete /users/:id
-func DeleteUser(c *gin.Context){
-	id, err := strconv.Atoi(c.Param("id"))
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
-		return
-	}
-
-	if !services.DeleteUser(id) {
-		c.JSON(http.StatusNotFound, gin.H{"message": "user not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
+	c.JSON(201, user)
 }

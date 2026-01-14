@@ -1,52 +1,39 @@
 package services
 
 import (
+	"go-api/config"
 	"go-api/models"
 )
 
-var users = []models.User{
-	{ID:1, Name: "Alice"},
-	{ID:2, Name: "Bob"},
+func GetAllUsers() ([]models.User, error) {
+	var users []models.User
+	result := config.DB.Find(&users)
+	return users, result.Error
 }
 
-func GetAllUsers() []models.User {
-	return users
+func GetUserByID(id uint) (*models.User, error) {
+	var user models.User
+	result := config.DB.First(&user, id)
+	return &user, result.Error
 }
 
-func GetUserByID(id int) (*models.User, bool) {
-	for _, user := range users {
-		if user.ID == id {
-			return &user, true
-		}
+func CreateUser(name string) (*models.User, error) {
+	user := models.User{Name: name}
+	result := config.DB.Create(&user)
+	return &user, result.Error
+}
+
+func UpdateUser(id uint, name string) (*models.User, error) {
+	var user models.User
+	if err := config.DB.First(&user, id).Error; err != nil {
+		return nil, err
 	}
-	return nil, false
+
+	user.Name = name
+	config.DB.Save(&user)
+	return &user, nil
 }
 
-func CreateUser(name string) models.User {
-	newUser := models.User{
-		ID: len(users) + 1,
-		Name : name,
-	}
-	users = append(users, newUser)
-	return newUser
-}
-
-func UpdateUser(id int, name string) (*models.User, bool) {
-	for i, user := range users {
-		if user.ID == id {
-			users[i].Name = name
-			return &users[i], true
-		}
-	}
-	return nil, false
-}
-
-func DeleteUser(id int) bool {
-	for i, user := range users {
-		if user.ID == id {
-			users = append(users[:i], users[i+1:]...)
-			return true
-		}
-	}
-	return false
+func DeleteUser(id uint) error {
+	return config.DB.Delete(&models.User{}, id).Error
 }
