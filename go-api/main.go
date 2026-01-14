@@ -1,13 +1,17 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"go-api/config"
+	"go-api/models"
 	"go-api/routes"
 )
 
-func main(){
-	r := gin.Default()
-	routes.RegisterRoutes(r)
+func main() {
+	config.ConnectDB()
+
+	// Auto migrate
+	config.DB.AutoMigrate(&models.User{})
+
+	r := routes.SetupRoutes()
 	r.Run(":8080")
 }
-
