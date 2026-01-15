@@ -8,6 +8,7 @@ import (
 	"go-api/models"
 	"go-api/services"
 	"go-api/config"
+	"go-api/helpers"
 	"strconv"
 )
 
@@ -32,22 +33,25 @@ func GetUserByID(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
-	var body struct {
-		Name string `json:"name"`
+	var req struct {
+		Name string `json:"name" binding:"required,min=3"`
 	}
 
-	if err := c.ShouldBindJSON(&body); err != nil || body.Name == "" {
-		c.JSON(400, gin.H{"message": "invalid request"})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validationErrors := helpers.FormatValidationErrors(err)
+
+		c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors,})
 		return
 	}
 
-	user, err := services.CreateUser(body.Name)
-	if err != nil {
-		c.JSON(500, gin.H{"message": "failed to create user"})
-		return
+	user := models.User{
+		Name: req.Name,
 	}
 
-	c.JSON(201, user)
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "user created successfully",
+		"data": user,
+	})
 }
 
 func UpdateUser(c *gin.Context) {
